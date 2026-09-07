@@ -1,0 +1,7 @@
+node_modules/
+config/config.json
+config.json
+*.local
+.DS_Store
+npm-debug.log*
+server.log

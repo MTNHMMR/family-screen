@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=1280, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<meta name="color-scheme" content="dark" />
+<title>Wall Display</title>
+<link rel="icon" href="data:," />
+<link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+<div id="screen">
+  <header id="topbar">
+    <div class="now">
+      <div id="clock">--:--</div>
+      <div id="date">&nbsp;</div>
+    </div>
+    <div class="wx-now" id="wxNow">
+      <div class="wx-now-main">
+        <span class="wx-icon" id="wxIcon">·</span>
+        <span class="wx-temp" id="wxTemp">--°</span>
+      </div>
+      <div class="wx-now-meta">
+        <div id="wxDesc">&nbsp;</div>
+        <div id="wxExtra" class="dim">&nbsp;</div>
+      </div>
+    </div>
+  </header>
+
+  <main id="body">
+    <section id="agenda">
+      <div class="loading" id="agendaLoading">Loading calendar…</div>
+    </section>
+
+    <aside id="rail">
+      <div class="card">
+        <h2>Hourly</h2>
+        <div id="hourly" class="hourly"></div>
+      </div>
+      <div class="card">
+        <h2>Forecast</h2>
+        <div id="forecast" class="forecast"></div>
+      </div>
+    </aside>
+  </main>
+
+  <footer id="statusbar">
+    <span id="calLegend" class="legend"></span>
+    <span id="status" class="dim"></span>
+  </footer>
+</div>
+<script src="/app.js"></script>
+</body>
+</html>

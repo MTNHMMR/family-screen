@@ -1,0 +1,26 @@
+{
+  "port": 8080,
+  "timezone": "America/Chicago",
+  "lat": 37.3059,
+  "lon": -89.5181,
+  "nwsUserAgent": "kindle-wall-display - you@example.com",
+  "hourlyCount": 12,
+  "dailyCount": 4,
+  "calendarDays": 3,
+  "refresh": {
+    "weatherMs": 600000,
+    "calendarMs": 300000
+  },
+  "calendars": [
+    {
+      "name": "Family",
+      "color": "#5aa9ff",
+      "url": "https://calendar.google.com/calendar/ical/xxxxxxxx%40group.calendar.google.com/private-xxxxxxxxxxxxxxxx/basic.ics"
+    },
+    {
+      "name": "Scouts",
+      "color": "#48c774",
+      "url": "https://calendar.google.com/calendar/ical/yyyyyyyy%40group.calendar.google.com/private-yyyyyyyyyyyyyyyy/basic.ics"
+    }
+  ]
+}

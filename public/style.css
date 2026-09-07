@@ -1,0 +1,181 @@
+:root {
+  --bg: #0f1216;
+  --surface: #171c22;
+  --surface-2: #1f262e;
+  --line: #2a323c;
+  --text: #e9ebee;
+  --dim: #97a0aa;
+  --accent: #5aa9ff;
+  --warn: #e6a53d;
+  --gap: 20px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Design target is the Fire HD 8 panel: 1280x800 landscape. Sizes below are
+   tuned for that; the layout still holds if the kiosk viewport is a little
+   short or narrow. */
+#screen {
+  display: grid;
+  grid-template-rows: 160px 1fr 34px;
+  height: 100vh;
+  width: 100vw;
+  padding: var(--gap);
+  gap: var(--gap);
+}
+
+/* ---------- top bar ---------- */
+#topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: stretch;
+}
+
+.now { display: flex; flex-direction: column; justify-content: center; }
+#clock {
+  font-size: 118px;
+  font-weight: 300;
+  line-height: 1;
+  letter-spacing: -2px;
+}
+#date {
+  font-size: 30px;
+  font-weight: 400;
+  color: var(--dim);
+  margin-top: 8px;
+}
+
+.wx-now {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-end;
+  text-align: right;
+}
+.wx-now-main { display: flex; align-items: center; gap: 16px; }
+.wx-icon { font-size: 74px; line-height: 1; }
+.wx-temp { font-size: 92px; font-weight: 300; line-height: 1; }
+.wx-now-meta { margin-top: 6px; }
+#wxDesc { font-size: 26px; }
+#wxExtra { font-size: 20px; margin-top: 2px; }
+
+/* ---------- body ---------- */
+#body {
+  display: grid;
+  grid-template-columns: 1fr 400px;
+  gap: var(--gap);
+  min-height: 0;
+}
+
+#agenda {
+  background: var(--surface);
+  border-radius: 14px;
+  padding: 22px 26px;
+  overflow: hidden;
+}
+
+.day { margin-bottom: 20px; }
+.day:last-child { margin-bottom: 0; }
+.day-head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 6px;
+  margin-bottom: 10px;
+}
+.day-head .d-label { font-size: 26px; font-weight: 600; }
+.day-head .d-date { font-size: 19px; color: var(--dim); }
+.day.is-today .d-label { color: var(--accent); }
+
+.event {
+  display: grid;
+  grid-template-columns: 132px 1fr;
+  gap: 14px;
+  padding: 7px 0 7px 12px;
+  border-left: 4px solid var(--accent);
+  margin-bottom: 4px;
+}
+.event .e-time { font-size: 21px; color: var(--dim); white-space: nowrap; }
+.event .e-title { font-size: 22px; }
+.event .e-loc { font-size: 17px; color: var(--dim); margin-top: 1px; }
+.event.all-day .e-time { font-size: 16px; letter-spacing: 0.5px; }
+
+.more { font-size: 18px; color: var(--dim); padding: 4px 0 0 12px; }
+.empty-day { font-size: 19px; color: var(--dim); padding-left: 12px; }
+
+/* ---------- rail ---------- */
+#rail { display: flex; flex-direction: column; gap: var(--gap); min-height: 0; }
+.card {
+  background: var(--surface);
+  border-radius: 14px;
+  padding: 16px 18px;
+  overflow: hidden;
+}
+.card h2 {
+  font-size: 16px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--dim);
+  margin-bottom: 10px;
+}
+
+.hourly { display: flex; flex-direction: column; gap: 2px; }
+.hour {
+  display: grid;
+  grid-template-columns: 76px 34px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 20px;
+}
+.hour:last-child { border-bottom: 0; }
+.hour .h-icon { font-size: 22px; text-align: center; }
+.hour .h-temp { font-weight: 600; }
+.hour .h-precip { color: var(--accent); font-size: 17px; min-width: 44px; text-align: right; }
+.hour .h-precip:empty::after { content: ""; }
+
+.forecast { display: flex; flex-direction: column; gap: 2px; }
+.fc {
+  display: grid;
+  grid-template-columns: 1fr 34px auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 20px;
+}
+.fc:last-child { border-bottom: 0; }
+.fc .f-icon { font-size: 22px; text-align: center; }
+.fc .f-hi { font-weight: 600; }
+.fc .f-lo { color: var(--dim); min-width: 42px; text-align: right; }
+.fc .f-precip { color: var(--accent); font-size: 16px; min-width: 44px; text-align: right; }
+
+/* ---------- status bar ---------- */
+#statusbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 15px;
+  padding: 0 6px;
+}
+.legend { display: flex; gap: 16px; flex-wrap: wrap; }
+.legend .lg { display: flex; align-items: center; gap: 6px; color: var(--dim); }
+.legend .dot { width: 11px; height: 11px; border-radius: 3px; display: inline-block; }
+#status.stale { color: var(--warn); }
+
+.loading, .empty { color: var(--dim); font-size: 20px; padding: 8px 0; }
+.dim { color: var(--dim); }
