@@ -44,8 +44,9 @@ Google Calendar (web) -> hover the calendar in the left list -> **⋮** ->
 **Settings and sharing** -> scroll to **Integrate calendar** -> copy
 **Secret address in iCal format** (ends in `/private-<hash>/basic.ics`).
 
-Treat that URL like a password - anyone with it can read the calendar. It lives
-only in `config/config.json`, which is git-ignored and bind-mounted read-only.
+Treat that URL like a password - anyone with it can read the calendar. Keep it
+in `config/config.json` (git-ignored) or in the `CALENDARS_JSON` env var - see
+deploy options below.
 
 ## 2. Run locally
 
@@ -56,22 +57,33 @@ npm start                 # http://localhost:8080
 
 ## 3. Deploy on the HomeLab (Portainer)
 
-Create the host config dir and file first:
+**Portainer -> Stacks -> Add stack -> Repository**, repo URL, branch `main`,
+compose path `docker-compose.yml`. Portainer builds the image from the Dockerfile.
+
+Then choose how the calendars get in:
+
+**Option A - all in Portainer (no host shell).** In the stack's environment set:
+
+- `TZ` = `America/Chicago`
+- `NWS_USER_AGENT` = your email
+- `CALENDARS_JSON` = the calendar list as a **one-line JSON array**, e.g.
+  `[{"name":"Justin","color":"#4d9de0","url":"https://calendar.google.com/calendar/ical/.../basic.ics"},{"name":"Carrie","color":"#a855f7","url":"https://..."}]`
+- optionally `LAT` / `LON` to move off the Cape Girardeau default
+
+and delete the `volumes:` block from the compose. Downside: the iCal URLs are
+then visible in the Portainer UI and `docker inspect`.
+
+**Option B - bind-mounted file.** On the Docker host (SSH / its console, *not*
+Windows PowerShell - `/opt/...` and `mkdir -p` are Linux):
 
 ```bash
 mkdir -p /opt/wall-display/config
-# copy config.example.json there as config.json and edit it
+# create config.json there from config.example.json, with your calendars
 ```
 
-**Portainer -> Stacks -> Add stack**
-
-- **From this git repo**: choose "Repository", give the repo URL. The bundled
-  `docker-compose.yml` builds the image and bind-mounts
-  `/opt/wall-display/config`. Set the stack env var `WALL_DISPLAY_CONFIG_DIR` if
-  your config lives elsewhere. Edit `TZ` and `NWS_USER_AGENT` in the compose env.
-- **From the web editor**: paste `docker-compose.yml`, change `build: .` to
-  `image: wall-display:latest`, and build that image on the host once
-  (`docker build -t wall-display .`).
+Keep the `volumes:` block. Set `WALL_DISPLAY_CONFIG_DIR` in the stack env if the
+dir is somewhere other than `/opt/wall-display/config`. The URLs stay in that
+file only.
 
 The container listens on `8080` (published as `8080` on the host). Point the
 tablet at `http://<homelab-ip>:8080`.

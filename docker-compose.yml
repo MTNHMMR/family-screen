@@ -1,18 +1,19 @@
 # Portainer stack for wall-display.
 #
-# Two ways to deploy in Portainer:
+# Deploy: Stacks -> Add stack -> "Repository", point at this repo (branch main,
+# compose path docker-compose.yml). Portainer builds the image from the Dockerfile.
 #
-#  A) Stacks -> Add stack -> "Repository": point at this git repo. Portainer
-#     runs `docker compose` with the build step below.
+# CONFIG -- pick ONE of these:
 #
-#  B) Stacks -> Add stack -> "Web editor": paste this file, but change the
-#     `build:` line to `image: wall-display:latest` and build/push that image
-#     yourself first (Portainer web-editor stacks can't build from context).
+#  A) All-in-Portainer (no host shell needed). Set CALENDARS_JSON below to a
+#     one-line JSON array of {name,color,url} objects, plus TZ / NWS_USER_AGENT /
+#     LAT / LON as needed. Delete the `volumes:` block. Trade-off: the iCal URLs
+#     are visible in the Portainer UI / `docker inspect`.
 #
-# Either way, create the config file on the host first:
-#   mkdir -p /opt/wall-display/config
-#   cp config.example.json /opt/wall-display/config/config.json   # then edit it
-# and set WALL_DISPLAY_CONFIG_DIR below (or hard-code the volume source path).
+#  B) Bind-mounted file. On the Docker host:
+#         mkdir -p /opt/wall-display/config
+#         # put config.json there (see config.example.json)
+#     Keep the `volumes:` block. URLs stay in that file only.
 
 services:
   wall-display:
@@ -26,6 +27,12 @@ services:
       # Container clock -- drives "Today/Tomorrow" grouping on the server side.
       TZ: "America/Chicago"
       # NWS asks anonymous clients to identify themselves; a bare email is fine.
-      NWS_USER_AGENT: "kindle-wall-display - you@example.com"
+      NWS_USER_AGENT: "family-screen - you@example.com"
+      # Option A only -- a JSON array on one line. Leave unset if using the file.
+      # CALENDARS_JSON: '[{"name":"Justin","color":"#4d9de0","url":"https://..."},{"name":"Carrie","color":"#a855f7","url":"https://..."}]'
+      # Optional: override the Cape Girardeau default point.
+      # LAT: "37.3059"
+      # LON: "-89.5181"
     volumes:
+      # Option B only -- delete this block if you set CALENDARS_JSON above.
       - ${WALL_DISPLAY_CONFIG_DIR:-/opt/wall-display/config}:/app/config:ro

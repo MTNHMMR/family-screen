@@ -94,9 +94,9 @@ const server = http.createServer(async (req, res) => {
 
 server.listen(config.port, () => {
   console.log(`wall-display listening on :${config.port}`);
-  console.log(`  config: ${config._loadedFrom || '(defaults + env only)'}`);
+  console.log(`  config file: ${config._loadedFrom || '(none - defaults + env)'}`);
   console.log(`  location: ${config.lat}, ${config.lon}  tz: ${process.env.TZ || config.timezone}`);
-  console.log(`  calendars: ${config.calendars.length}`);
+  console.log(`  calendars: ${config.calendars.length} (from ${config._calendarsFrom || 'config file'})`);
   if (!config.nwsUserAgent) {
     console.warn('  WARNING: nwsUserAgent is empty -- set it to a contact email; NWS may throttle anonymous clients.');
   }
