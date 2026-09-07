@@ -57,36 +57,33 @@ npm start                 # http://localhost:8080
 
 ## 3. Deploy on the HomeLab (Portainer)
 
-**Portainer -> Stacks -> Add stack -> Repository**, repo URL, branch `main`,
-compose path `docker-compose.yml`. Portainer builds the image from the Dockerfile.
+**Portainer -> Stacks -> Add stack -> Repository**
 
-Then choose how the calendars get in:
+- Repository URL: `https://github.com/MTNHMMR/family-screen`
+- Reference: `refs/heads/main`
+- Compose path: `docker-compose.yml`
 
-**Option A - all in Portainer (no host shell).** In the stack's environment set:
+Under **Environment variables** on the same screen, add:
 
-- `TZ` = `America/Chicago`
-- `NWS_USER_AGENT` = your email
-- `CALENDARS_JSON` = the calendar list as a **one-line JSON array**, e.g.
-  `[{"name":"Justin","color":"#4d9de0","url":"https://calendar.google.com/calendar/ical/.../basic.ics"},{"name":"Carrie","color":"#a855f7","url":"https://..."}]`
-- optionally `LAT` / `LON` to move off the Cape Girardeau default
+| name | value |
+| ---- | ----- |
+| `CALENDARS_JSON` | the calendar list as a **one-line JSON array** of `{name,color,url}` (see `config.example.json`) |
+| `NWS_USER_AGENT` | your email |
+| `TZ` | `America/Chicago` (optional; already the default) |
+| `LAT` / `LON` | only to move off the Cape Girardeau default |
 
-and delete the `volumes:` block from the compose. Downside: the iCal URLs are
-then visible in the Portainer UI and `docker inspect`.
+Deploy. Portainer builds the image from the Dockerfile and starts the container
+on port `8080`. The repo compose has no secrets in it -- the iCal URLs only
+exist in the `CALENDARS_JSON` value you enter here (visible in the Portainer UI
+and `docker inspect`, which is fine for a LAN display).
 
-**Option B - bind-mounted file.** On the Docker host (SSH / its console, *not*
-Windows PowerShell - `/opt/...` and `mkdir -p` are Linux):
+*Alternative (bind-mounted file instead of the env var):* on the Docker host
+shell -- Linux, or the WSL side of Docker Desktop, **not** Windows PowerShell --
+`mkdir -p /opt/wall-display/config`, put `config.json` there, and add
+`- /opt/wall-display/config:/app/config:ro` back under a `volumes:` key. On
+Docker Desktop for Windows the env var is far less hassle.
 
-```bash
-mkdir -p /opt/wall-display/config
-# create config.json there from config.example.json, with your calendars
-```
-
-Keep the `volumes:` block. Set `WALL_DISPLAY_CONFIG_DIR` in the stack env if the
-dir is somewhere other than `/opt/wall-display/config`. The URLs stay in that
-file only.
-
-The container listens on `8080` (published as `8080` on the host). Point the
-tablet at `http://<homelab-ip>:8080`.
+The container listens on `8080`. Point the tablet at `http://<homelab-ip>:8080`.
 
 Health check: `GET /api/health` returns `{ "ok": true, ... }`.
 

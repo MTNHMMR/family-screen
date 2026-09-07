@@ -1,19 +1,18 @@
-# Portainer stack for wall-display.
+# wall-display -- Portainer stack.
 #
-# Deploy: Stacks -> Add stack -> "Repository", point at this repo (branch main,
-# compose path docker-compose.yml). Portainer builds the image from the Dockerfile.
+# Deploy: Portainer -> Stacks -> Add stack -> "Repository"
+#   Repository URL:  https://github.com/MTNHMMR/family-screen
+#   Reference:       refs/heads/main
+#   Compose path:    docker-compose.yml
 #
-# CONFIG -- pick ONE of these:
+# Then add these under "Environment variables" in the same screen:
+#   CALENDARS_JSON   one-line JSON array of {name,color,url} (see README / config.example.json)
+#   NWS_USER_AGENT   your email (NWS asks anonymous clients to identify themselves)
+#   TZ               America/Chicago        (optional, this is the default)
+#   LAT / LON        only to move off the Cape Girardeau default
 #
-#  A) All-in-Portainer (no host shell needed). Set CALENDARS_JSON below to a
-#     one-line JSON array of {name,color,url} objects, plus TZ / NWS_USER_AGENT /
-#     LAT / LON as needed. Delete the `volumes:` block. Trade-off: the iCal URLs
-#     are visible in the Portainer UI / `docker inspect`.
-#
-#  B) Bind-mounted file. On the Docker host:
-#         mkdir -p /opt/wall-display/config
-#         # put config.json there (see config.example.json)
-#     Keep the `volumes:` block. URLs stay in that file only.
+# Nothing secret lives in this file -- the calendar URLs come from the
+# CALENDARS_JSON env var you enter in Portainer, not from the repo.
 
 services:
   wall-display:
@@ -22,17 +21,10 @@ services:
     container_name: wall-display
     restart: unless-stopped
     ports:
-      - "8080:8080"
+      - "${PORT:-8080}:8080"
     environment:
-      # Container clock -- drives "Today/Tomorrow" grouping on the server side.
-      TZ: "America/Chicago"
-      # NWS asks anonymous clients to identify themselves; a bare email is fine.
-      NWS_USER_AGENT: "family-screen - you@example.com"
-      # Option A only -- a JSON array on one line. Leave unset if using the file.
-      # CALENDARS_JSON: '[{"name":"Justin","color":"#4d9de0","url":"https://..."},{"name":"Carrie","color":"#a855f7","url":"https://..."}]'
-      # Optional: override the Cape Girardeau default point.
-      # LAT: "37.3059"
-      # LON: "-89.5181"
-    volumes:
-      # Option B only -- delete this block if you set CALENDARS_JSON above.
-      - ${WALL_DISPLAY_CONFIG_DIR:-/opt/wall-display/config}:/app/config:ro
+      TZ: "${TZ:-America/Chicago}"
+      NWS_USER_AGENT: "${NWS_USER_AGENT:-family-screen}"
+      CALENDARS_JSON: "${CALENDARS_JSON:-[]}"
+      LAT: "${LAT:-37.3059}"
+      LON: "${LON:--89.5181}"
