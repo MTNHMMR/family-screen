@@ -2,11 +2,33 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=1280, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
 <meta name="color-scheme" content="dark" />
 <title>Wall Display</title>
 <link rel="icon" href="data:," />
 <link rel="stylesheet" href="/style.css" />
+<script>
+  // The layout is authored at a fixed 1280x800 and scaled to fit whatever
+  // viewport it lands in (Fire panel, laptop window, kiosk with a nav bar).
+  (function () {
+    function fit() {
+      var el = document.documentElement;
+      var vw = el.clientWidth || window.innerWidth;
+      var vh = el.clientHeight || window.innerHeight;
+      if (!vw || !vh) return;
+      el.style.setProperty('--fit', Math.min(vw / 1280, vh / 800));
+    }
+    window.addEventListener('resize', fit);
+    window.addEventListener('orientationchange', fit);
+    window.addEventListener('load', fit);
+    document.addEventListener('DOMContentLoaded', fit);
+    // Kiosk browsers settle their viewport (hiding bars, etc.) a beat after
+    // load -- re-measure a few times early on.
+    var n = 0;
+    var t = setInterval(function () { fit(); if (++n > 12) clearInterval(t); }, 200);
+    fit();
+  })();
+</script>
 </head>
 <body>
 <div id="screen">
