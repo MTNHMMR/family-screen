@@ -110,13 +110,13 @@ function renderWeather() {
   (w.daily || []).slice(0, 4).forEach(function (d) {
     var row = document.createElement('div');
     row.className = 'fc';
-    var precip = d.precip != null && d.precip >= 15 ? d.precip + '%' : '';
+    var precip = d.precip == null ? '–' : d.precip + '%';
     row.innerHTML =
       '<span class="f-name">' + shortDayName(d) + '</span>' +
       '<span class="f-icon">' + d.icon + '</span>' +
+      '<span class="f-precip">💧 ' + precip + '</span>' +
       '<span class="f-hi">' + (d.high != null ? d.high + '°' : '–') + '</span>' +
-      '<span class="f-lo">' + (d.low != null ? d.low + '°' : '') + '</span>' +
-      '<span class="f-precip">' + precip + '</span>';
+      '<span class="f-lo">' + (d.low != null ? d.low + '°' : '') + '</span>';
     fEl.appendChild(row);
   });
 }

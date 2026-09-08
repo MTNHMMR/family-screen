@@ -158,7 +158,7 @@ html, body {
 .forecast { display: flex; flex-direction: column; gap: 2px; }
 .fc {
   display: grid;
-  grid-template-columns: 1fr 34px auto auto;
+  grid-template-columns: 1fr 32px 72px auto auto;
   align-items: center;
   gap: 10px;
   padding: 6px 0;
@@ -167,9 +167,9 @@ html, body {
 }
 .fc:last-child { border-bottom: 0; }
 .fc .f-icon { font-size: 22px; text-align: center; }
-.fc .f-hi { font-weight: 600; }
+.fc .f-precip { color: var(--accent); font-size: 16px; text-align: right; white-space: nowrap; }
+.fc .f-hi { font-weight: 600; min-width: 42px; text-align: right; }
 .fc .f-lo { color: var(--dim); min-width: 42px; text-align: right; }
-.fc .f-precip { color: var(--accent); font-size: 16px; min-width: 44px; text-align: right; }
 
 /* ---------- status bar ---------- */
 #statusbar {
