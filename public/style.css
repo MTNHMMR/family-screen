@@ -156,20 +156,25 @@ html, body {
 .hour .h-precip:empty::after { content: ""; }
 
 .forecast { display: flex; flex-direction: column; gap: 2px; }
+/* Every column a fixed width so day / icon / rain% / high / low line up
+   straight down the card. Only the day name flexes. */
 .fc {
   display: grid;
-  grid-template-columns: 1fr 32px 72px auto auto;
+  grid-template-columns: 1fr 24px 62px 44px 40px;
   align-items: center;
-  gap: 10px;
-  padding: 6px 0;
+  gap: 12px;
+  padding: 7px 0;
   border-bottom: 1px solid var(--line);
   font-size: 20px;
+  line-height: 1.1;
+  white-space: nowrap;
 }
 .fc:last-child { border-bottom: 0; }
-.fc .f-icon { font-size: 22px; text-align: center; }
-.fc .f-precip { color: var(--accent); font-size: 16px; text-align: right; white-space: nowrap; }
-.fc .f-hi { font-weight: 600; min-width: 42px; text-align: right; }
-.fc .f-lo { color: var(--dim); min-width: 42px; text-align: right; }
+.fc .f-name { overflow: hidden; text-overflow: ellipsis; }
+.fc .f-icon { font-size: 19px; text-align: center; }
+.fc .f-precip { color: var(--accent); font-size: 15px; text-align: right; }
+.fc .f-hi { font-weight: 600; text-align: right; }
+.fc .f-lo { color: var(--dim); text-align: right; }
 
 /* ---------- status bar ---------- */
 #statusbar {
