@@ -258,7 +258,8 @@ html, body {
   overflow: hidden;
   cursor: pointer;
 }
-.cam-tile img { width: 100%; height: 100%; object-fit: contain; background: #000; }
+.cam-tile img,
+.cam-tile video { width: 100%; height: 100%; object-fit: contain; background: #000; }
 .cam-tile-label {
   position: absolute;
   left: 0;

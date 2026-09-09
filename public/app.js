@@ -273,12 +273,13 @@ function escapeHtml(s) {
 
 var CAM_AUTO_CLOSE_MS = 90 * 1000; // don't leave live feeds burning the LCD / Ring quota
 var CAM_POLL_MS = 2000;            // snapshot-fallback cadence
+var CAM_LIVE_START_MS = 25000;     // give the HLS stream this long to show a frame
 
 var cam = {
   list: [],
   open: false,
   closeTimer: null,
-  tiles: {}, // id -> { img, msgEl, mode, errCount, pollTimer }
+  tiles: {}, // id -> { video, img, msgEl, hls, mode, liveTimer, pollTimer }
 };
 
 function loadCameras() {
@@ -312,8 +313,15 @@ function openCam() {
     tile.className = 'cam-tile';
     tile.setAttribute('data-cam', c.id);
 
+    var video = document.createElement('video');
+    video.muted = true;
+    video.setAttribute('playsinline', '');
+    video.setAttribute('autoplay', '');
+    video.hidden = true;
+
     var img = document.createElement('img');
     img.alt = ''; // the .cam-tile-label carries the name; keep the broken-img glyph out
+    img.hidden = true;
 
     var label = document.createElement('div');
     label.className = 'cam-tile-label';
@@ -323,6 +331,7 @@ function openCam() {
     msg.className = 'cam-tile-msg';
     msg.hidden = true;
 
+    tile.appendChild(video);
     tile.appendChild(img);
     tile.appendChild(label);
     tile.appendChild(msg);
@@ -332,52 +341,118 @@ function openCam() {
     });
     grid.appendChild(tile);
 
-    cam.tiles[c.id] = { img: img, msgEl: msg, mode: 'stream', errCount: 0, pollTimer: null };
-    startTileStream(c.id);
+    cam.tiles[c.id] = {
+      video: video, img: img, msgEl: msg,
+      hls: null, mode: null, liveTimer: null, pollTimer: null,
+    };
+    startTileLive(c.id);
   });
 
   $('camOverlay').hidden = false;
   bumpCamAutoClose();
 }
 
-function startTileStream(id) {
-  var t = cam.tiles[id];
+function destroyTileHls(t) {
+  if (t && t.hls) {
+    try { t.hls.destroy(); } catch (e) { /* ignore */ }
+    t.hls = null;
+  }
+}
+
+function stopTilePoll(t) {
   if (!t) return;
   clearInterval(t.pollTimer);
   t.pollTimer = null;
-  t.mode = 'stream';
-  t.msgEl.hidden = true;
-  t.img.onload = function () { t.msgEl.hidden = true; };
-  t.img.onerror = function () { onTileError(id); };
-  t.img.src = '/api/cam/' + encodeURIComponent(id) + '/stream?t=' + Date.now();
 }
 
-function startTilePolling(id) {
+// Live view: the real HLS stream, same one HA's own UI uses.
+function startTileLive(id) {
+  var t = cam.tiles[id];
+  if (!t) return;
+  t.mode = 'live';
+  stopTilePoll(t);
+  destroyTileHls(t);
+
+  t.img.hidden = true;
+  t.video.hidden = false;
+  t.msgEl.textContent = 'Starting live view…';
+  t.msgEl.hidden = false;
+
+  var src = '/api/cam/' + encodeURIComponent(id) + '/hls?t=' + Date.now();
+
+  // Ring live view is slow to spin up; give it a while, then show the snapshot.
+  clearTimeout(t.liveTimer);
+  t.liveTimer = setTimeout(function () {
+    console.warn('camera "' + id + '" live view slow to start; using last snapshot');
+    startTileSnapshot(id);
+  }, CAM_LIVE_START_MS);
+
+  t.video.onplaying = function () {
+    clearTimeout(t.liveTimer);
+    t.msgEl.hidden = true;
+  };
+
+  if (window.Hls && window.Hls.isSupported()) {
+    var hls = new window.Hls({
+      liveSyncDurationCount: 3,
+      manifestLoadingTimeOut: 20000,
+      manifestLoadingMaxRetry: 3,
+      levelLoadingTimeOut: 20000,
+      fragLoadingTimeOut: 30000,
+      backBufferLength: 15,
+    });
+    t.hls = hls;
+    hls.on(window.Hls.Events.ERROR, function (evt, data) {
+      if (!data || !data.fatal) return;
+      console.warn('camera "' + id + '" hls fatal:', data.type, data.details);
+      startTileSnapshot(id);
+    });
+    hls.on(window.Hls.Events.MANIFEST_PARSED, function () {
+      var p = t.video.play();
+      if (p && p.catch) p.catch(function () {});
+    });
+    hls.loadSource(src);
+    hls.attachMedia(t.video);
+  } else if (t.video.canPlayType('application/vnd.apple.mpegurl')) {
+    // Safari / iOS WebView -- native HLS
+    t.video.onerror = function () { startTileSnapshot(id); };
+    t.video.src = src;
+    var p2 = t.video.play();
+    if (p2 && p2.catch) p2.catch(function () {});
+  } else {
+    startTileSnapshot(id); // no HLS support at all
+  }
+}
+
+// Fallback: poll the still image (for Ring, the last event's frame).
+function startTileSnapshot(id) {
   var t = cam.tiles[id];
   if (!t) return;
   t.mode = 'snapshot';
+  clearTimeout(t.liveTimer);
+  destroyTileHls(t);
+
+  try { t.video.pause(); } catch (e) { /* ignore */ }
+  t.video.onplaying = null;
+  t.video.onerror = null;
+  t.video.removeAttribute('src');
+  t.video.hidden = true;
+  t.img.hidden = false;
+
+  t.msgEl.textContent = 'Live view unavailable — showing last event';
+  t.msgEl.hidden = false;
+  t.img.onload = function () { t.msgEl.hidden = true; };
   t.img.onerror = function () {
-    t.msgEl.textContent = 'Unavailable';
+    t.msgEl.textContent = 'Camera unavailable';
     t.msgEl.hidden = false;
   };
+
   function tick() {
     t.img.src = '/api/cam/' + encodeURIComponent(id) + '/snapshot?t=' + Date.now();
   }
   tick();
   clearInterval(t.pollTimer);
   t.pollTimer = setInterval(tick, CAM_POLL_MS);
-}
-
-function onTileError(id) {
-  var t = cam.tiles[id];
-  if (!t) return;
-  t.errCount++;
-  if (t.mode === 'stream' && t.errCount >= 2) {
-    startTilePolling(id); // Ring live view often won't hold MJPEG; fall back to stills
-  } else {
-    t.msgEl.textContent = 'Connecting…';
-    t.msgEl.hidden = false;
-  }
 }
 
 function toggleCamSolo(id) {
@@ -408,10 +483,17 @@ function closeCam() {
   cam.closeTimer = null;
   Object.keys(cam.tiles).forEach(function (id) {
     var t = cam.tiles[id];
-    clearInterval(t.pollTimer);
+    clearTimeout(t.liveTimer);
+    stopTilePoll(t);
+    destroyTileHls(t);
+    try { t.video.pause(); } catch (e) { /* ignore */ }
+    t.video.onplaying = null;
+    t.video.onerror = null;
+    t.video.removeAttribute('src');
+    if (t.video.load) t.video.load(); // fully drop the stream
     t.img.onerror = null;
     t.img.onload = null;
-    t.img.removeAttribute('src'); // drop each MJPEG connection
+    t.img.removeAttribute('src');
   });
   cam.tiles = {};
   $('camGrid').innerHTML = '';

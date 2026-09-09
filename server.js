@@ -83,6 +83,10 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/api/cameras') {
       return sendJson(res, { cameras: camera.listCameras(config) });
     }
+    const hlsMatch = url.pathname.match(/^\/api\/cam\/([A-Za-z0-9_-]+)\/hls(?:\/([A-Za-z0-9_-]+))?$/);
+    if (hlsMatch) {
+      return camera.proxyHls(config, hlsMatch[1], hlsMatch[2] || '', res, req);
+    }
     const camMatch = url.pathname.match(/^\/api\/cam\/([A-Za-z0-9_-]+)\/(stream|snapshot)$/);
     if (camMatch) {
       return camera.proxy(config, camMatch[1], camMatch[2], res, req);

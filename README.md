@@ -16,7 +16,8 @@ lib/weather.js       SEMO current conditions + NWS forecast / hourly (NWS obs fa
 lib/calendar.js      fetch + parse each iCal URL, expand recurrences, merge, sort
 lib/cache.js         in-memory TTL cache with serve-stale-on-error
 lib/config.js        config.json + a few env overrides
-public/              index.html + style.css + app.js  (the display itself)
+lib/camera.js        Home Assistant camera proxy (HLS live stream + snapshot fallback)
+public/              index.html + style.css + app.js + hls.min.js (vendored)
 ```
 
 ## 1. Configure
@@ -55,9 +56,17 @@ deploy options below.
 Optional. With `homeAssistant` configured, a **Cameras** button appears in the top
 bar between the clock and the weather. Tapping it opens a grid with every
 configured camera as its own live tile; tap a tile to blow it up full-screen, tap
-again for the grid. It closes on ✕, `Esc`, or after 90 s (so live Ring feeds
-don't sit open burning the panel and your Ring quota). The Node service proxies
-every frame, so the HA token never reaches the tablet.
+again for the grid. It closes on ✕, `Esc`, or after 90 s (so live feeds don't sit
+open burning the panel and your Ring quota). The Node service proxies everything,
+so the HA token never reaches the tablet.
+
+Each tile plays the **live HLS stream** — the same one HA's own camera card uses.
+The server asks HA for it over the websocket (`camera/stream`) and then proxies
+the `.m3u8` playlists and `.ts` segments; the browser plays them with a vendored
+copy of `hls.js` (`public/hls.min.js`, no CDN). HLS runs ~6-10 s behind real time.
+A camera whose live stream won't start within ~25 s (Ring live view is slow and
+rate-limited) drops back to polling the still image — for Ring that's the last
+event's frame, labelled as such.
 
 Config keys (`homeAssistant` block for a local run; the matching env vars for a
 Portainer deploy — see below):
@@ -77,8 +86,7 @@ Portainer deploy — see below):
    family Ring cameras are already baked into `docker-compose.yml`.
 
 Only cameras listed here can be requested — the proxy never forwards a
-caller-supplied entity. MJPEG is used first; a camera that won't hold the stream
-(Ring usually won't) falls back to a 2 s snapshot poll automatically.
+caller-supplied entity, and only fetches HA's own `/api/` paths.
 
 ## 2. Run locally
 
