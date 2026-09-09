@@ -264,6 +264,166 @@ function escapeHtml(s) {
   });
 }
 
+/* ------------------------------------------------------------------ cameras */
+
+var CAM_AUTO_CLOSE_MS = 90 * 1000; // don't leave live feeds burning the LCD / Ring quota
+var CAM_POLL_MS = 2000;            // snapshot-fallback cadence
+
+var cam = {
+  list: [],
+  open: false,
+  closeTimer: null,
+  tiles: {}, // id -> { img, msgEl, mode, errCount, pollTimer }
+};
+
+function loadCameras() {
+  return fetchJSON('/api/cameras')
+    .then(function (data) {
+      cam.list = (data && data.cameras) || [];
+      $('camBtn').hidden = cam.list.length === 0;
+    })
+    .catch(function (err) { console.warn('cameras fetch failed', err); });
+}
+
+function camColsFor(n) {
+  if (n <= 1) return 1;
+  if (n <= 4) return 2;
+  if (n <= 9) return 3;
+  return 4;
+}
+
+function openCam() {
+  if (!cam.list.length || cam.open) return;
+  cam.open = true;
+
+  var grid = $('camGrid');
+  grid.className = '';
+  grid.style.setProperty('--cam-cols', camColsFor(cam.list.length));
+  grid.innerHTML = '';
+  cam.tiles = {};
+
+  cam.list.forEach(function (c) {
+    var tile = document.createElement('div');
+    tile.className = 'cam-tile';
+    tile.setAttribute('data-cam', c.id);
+
+    var img = document.createElement('img');
+    img.alt = ''; // the .cam-tile-label carries the name; keep the broken-img glyph out
+
+    var label = document.createElement('div');
+    label.className = 'cam-tile-label';
+    label.textContent = c.name;
+
+    var msg = document.createElement('div');
+    msg.className = 'cam-tile-msg';
+    msg.hidden = true;
+
+    tile.appendChild(img);
+    tile.appendChild(label);
+    tile.appendChild(msg);
+    tile.addEventListener('click', function (e) {
+      e.stopPropagation();
+      toggleCamSolo(c.id);
+    });
+    grid.appendChild(tile);
+
+    cam.tiles[c.id] = { img: img, msgEl: msg, mode: 'stream', errCount: 0, pollTimer: null };
+    startTileStream(c.id);
+  });
+
+  $('camOverlay').hidden = false;
+  bumpCamAutoClose();
+}
+
+function startTileStream(id) {
+  var t = cam.tiles[id];
+  if (!t) return;
+  clearInterval(t.pollTimer);
+  t.pollTimer = null;
+  t.mode = 'stream';
+  t.msgEl.hidden = true;
+  t.img.onload = function () { t.msgEl.hidden = true; };
+  t.img.onerror = function () { onTileError(id); };
+  t.img.src = '/api/cam/' + encodeURIComponent(id) + '/stream?t=' + Date.now();
+}
+
+function startTilePolling(id) {
+  var t = cam.tiles[id];
+  if (!t) return;
+  t.mode = 'snapshot';
+  t.img.onerror = function () {
+    t.msgEl.textContent = 'Unavailable';
+    t.msgEl.hidden = false;
+  };
+  function tick() {
+    t.img.src = '/api/cam/' + encodeURIComponent(id) + '/snapshot?t=' + Date.now();
+  }
+  tick();
+  clearInterval(t.pollTimer);
+  t.pollTimer = setInterval(tick, CAM_POLL_MS);
+}
+
+function onTileError(id) {
+  var t = cam.tiles[id];
+  if (!t) return;
+  t.errCount++;
+  if (t.mode === 'stream' && t.errCount >= 2) {
+    startTilePolling(id); // Ring live view often won't hold MJPEG; fall back to stills
+  } else {
+    t.msgEl.textContent = 'Connecting…';
+    t.msgEl.hidden = false;
+  }
+}
+
+function toggleCamSolo(id) {
+  var grid = $('camGrid');
+  var current = grid.querySelector('.cam-tile.solo');
+  var alreadySolo = current && current.getAttribute('data-cam') === id;
+  var tiles = grid.querySelectorAll('.cam-tile');
+  for (var i = 0; i < tiles.length; i++) tiles[i].classList.remove('solo');
+  if (alreadySolo) {
+    grid.classList.remove('solo');
+  } else {
+    grid.classList.add('solo');
+    var el = grid.querySelector('.cam-tile[data-cam="' + id + '"]');
+    if (el) el.classList.add('solo');
+  }
+  bumpCamAutoClose();
+}
+
+function bumpCamAutoClose() {
+  if (!cam.open) return;
+  clearTimeout(cam.closeTimer);
+  cam.closeTimer = setTimeout(closeCam, CAM_AUTO_CLOSE_MS);
+}
+
+function closeCam() {
+  cam.open = false;
+  clearTimeout(cam.closeTimer);
+  cam.closeTimer = null;
+  Object.keys(cam.tiles).forEach(function (id) {
+    var t = cam.tiles[id];
+    clearInterval(t.pollTimer);
+    t.img.onerror = null;
+    t.img.onload = null;
+    t.img.removeAttribute('src'); // drop each MJPEG connection
+  });
+  cam.tiles = {};
+  $('camGrid').innerHTML = '';
+  $('camOverlay').hidden = true;
+}
+
+function wireCameras() {
+  $('camBtn').addEventListener('click', openCam);
+  $('camClose').addEventListener('click', function (e) { e.stopPropagation(); closeCam(); });
+  $('camOverlay').addEventListener('click', function (e) {
+    if (e.target === $('camOverlay') || e.target === $('camGrid')) closeCam();
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && cam.open) closeCam();
+  });
+}
+
 /* ------------------------------------------------------------------ status */
 
 function renderStatus() {
@@ -333,6 +493,9 @@ function loadCalendar() {
 function start() {
   tickClock();
   setInterval(tickClock, 1000);
+
+  wireCameras();
+  loadCameras();
 
   loadWeather();
   loadCalendar();

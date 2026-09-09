@@ -8,11 +8,17 @@
 # Then add these under "Environment variables" in the same screen:
 #   CALENDARS_JSON   one-line JSON array of {name,color,url} (see README / config.example.json)
 #   NWS_USER_AGENT   your email (NWS asks anonymous clients to identify themselves)
+#   HA_TOKEN         Home Assistant long-lived access token -> turns on the Cameras button.
+#                    Leave unset and the button simply never appears.
+#   HA_BASE_URL      only if "http://homeassistant.local:8123" doesn't resolve from the
+#                    container -- set it to the HA host's LAN IP, e.g. http://192.168.1.20:8123
 #   TZ               America/Chicago        (optional, this is the default)
 #   LAT / LON        only to move off the Cape Girardeau default
 #
-# Nothing secret lives in this file -- the calendar URLs come from the
-# CALENDARS_JSON env var you enter in Portainer, not from the repo.
+# The camera list is baked in below (HA_CAMERAS_JSON) -- entity names, not secrets.
+# Override HA_CAMERAS_JSON in Portainer if the cameras change. Nothing secret lives
+# in this file; the calendar URLs and the HA token come from env vars you enter in
+# Portainer, not from the repo.
 
 services:
   wall-display:
@@ -28,3 +34,6 @@ services:
       CALENDARS_JSON: "${CALENDARS_JSON:-[]}"
       LAT: "${LAT:-37.3059}"
       LON: "${LON:--89.5181}"
+      HA_BASE_URL: "${HA_BASE_URL:-http://homeassistant.local:8123}"
+      HA_TOKEN: "${HA_TOKEN:-}"
+      HA_CAMERAS_JSON: '[{"id":"front","name":"Front Door","entity":"camera.front_door_live_view"},{"id":"driveway","name":"Driveway","entity":"camera.driveway_live_view"},{"id":"backyard","name":"Back Yard","entity":"camera.backyard_live_view"}]'

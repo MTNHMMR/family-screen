@@ -11,6 +11,14 @@
     "weatherMs": 600000,
     "calendarMs": 300000
   },
+  "homeAssistant": {
+    "baseUrl": "http://homeassistant.local:8123",
+    "token": "",
+    "cameras": [
+      { "id": "front", "name": "Front Door", "entity": "camera.front_door" },
+      { "id": "back", "name": "Backyard", "entity": "camera.backyard" }
+    ]
+  },
   "calendars": [
     {
       "name": "Family",

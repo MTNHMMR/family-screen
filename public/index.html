@@ -37,6 +37,9 @@
       <div id="clock">--:--</div>
       <div id="date">&nbsp;</div>
     </div>
+    <button id="camBtn" type="button" hidden>
+      <span class="cam-ico">📷</span><span class="cam-lbl">Cameras</span>
+    </button>
     <div class="wx-now" id="wxNow">
       <div class="wx-now-main">
         <span class="wx-icon" id="wxIcon">·</span>
@@ -70,6 +73,11 @@
     <span id="calLegend" class="legend"></span>
     <span id="status" class="dim"></span>
   </footer>
+
+  <div id="camOverlay" hidden>
+    <button id="camClose" type="button" aria-label="Close cameras">✕</button>
+    <div id="camGrid"></div>
+  </div>
 </div>
 <script src="/app.js"></script>
 </body>

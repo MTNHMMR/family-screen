@@ -7,6 +7,7 @@ const path = require('path');
 const { loadConfig } = require('./lib/config');
 const { getWeather } = require('./lib/weather');
 const { getCalendar } = require('./lib/calendar');
+const camera = require('./lib/camera');
 
 const config = loadConfig();
 const PUBLIC_DIR = path.join(__dirname, 'public');
@@ -70,6 +71,7 @@ const server = http.createServer(async (req, res) => {
         ts: Date.now(),
         configFrom: config._loadedFrom || '(defaults/env)',
         calendars: config.calendars.length,
+        cameras: camera.listCameras(config).length,
       });
     }
     if (url.pathname === '/api/weather') {
@@ -77,6 +79,13 @@ const server = http.createServer(async (req, res) => {
     }
     if (url.pathname === '/api/calendar') {
       return sendJson(res, await getCalendar(config));
+    }
+    if (url.pathname === '/api/cameras') {
+      return sendJson(res, { cameras: camera.listCameras(config) });
+    }
+    const camMatch = url.pathname.match(/^\/api\/cam\/([A-Za-z0-9_-]+)\/(stream|snapshot)$/);
+    if (camMatch) {
+      return camera.proxy(config, camMatch[1], camMatch[2], res, req);
     }
     if (url.pathname.startsWith('/api/')) {
       return sendJson(res, { error: 'unknown endpoint' }, 404);

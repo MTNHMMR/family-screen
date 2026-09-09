@@ -191,3 +191,88 @@ html, body {
 
 .loading, .empty { color: var(--dim); font-size: 20px; padding: 8px 0; }
 .dim { color: var(--dim); }
+
+/* ---------- cameras button (in the top bar) + overlay ---------- */
+#camBtn {
+  align-self: center;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 24px;
+  font: inherit;
+  font-size: 22px;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  cursor: pointer;
+}
+#camBtn .cam-ico { font-size: 26px; line-height: 1; }
+#camBtn:active { background: var(--surface-2); }
+
+#camOverlay {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  background: var(--bg);
+  padding: var(--gap);
+}
+#camOverlay[hidden] { display: none; } /* id selector beats UA [hidden] rule */
+
+#camClose {
+  position: absolute;
+  top: var(--gap);
+  right: var(--gap);
+  z-index: 2;
+  width: 52px;
+  height: 52px;
+  font: inherit;
+  font-size: 26px;
+  line-height: 1;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+#camGrid {
+  display: grid;
+  gap: var(--gap);
+  width: 100%;
+  height: 100%;
+  grid-template-columns: repeat(var(--cam-cols, 2), 1fr);
+}
+#camGrid.solo { grid-template-columns: 1fr; }
+#camGrid.solo .cam-tile { display: none; }
+#camGrid.solo .cam-tile.solo { display: flex; }
+
+.cam-tile {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #000;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+  cursor: pointer;
+}
+.cam-tile img { width: 100%; height: 100%; object-fit: contain; background: #000; }
+.cam-tile-label {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  padding: 6px 14px;
+  font-size: 18px;
+  color: var(--text);
+  background: rgba(0, 0, 0, 0.55);
+  border-top-right-radius: 10px;
+}
+.cam-tile-msg {
+  position: absolute;
+  padding: 16px;
+  font-size: 20px;
+  color: var(--warn);
+  text-align: center;
+}
