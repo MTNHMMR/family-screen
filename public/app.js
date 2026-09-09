@@ -80,13 +80,18 @@ function renderWeather() {
   $('wxDesc').textContent = desc;
 
   var bits = [];
+  if (c.feelsLike != null && c.temp != null && Math.abs(c.feelsLike - c.temp) >= 3) {
+    bits.push('Feels ' + c.feelsLike + '°');
+  }
   if (w.daily[0] && w.daily[0].high != null) {
     bits.push('H ' + w.daily[0].high + '°');
   }
   var lowToday = w.daily[0] && w.daily[0].low;
   if (lowToday != null) bits.push('L ' + lowToday + '°');
   if (c.humidity != null) bits.push(c.humidity + '% RH');
-  if (c.windMph != null) bits.push(c.windMph + ' mph');
+  if (c.windMph != null) {
+    bits.push(c.windMph + (c.windDir ? ' mph ' + c.windDir : ' mph'));
+  }
   $('wxExtra').textContent = bits.join('   ');
 
   // hourly
@@ -438,6 +443,9 @@ function renderStatus() {
   } else {
     parts.push('wx —');
     stale = true;
+  }
+  if (state.weather && state.weather.currentSource === 'semo') {
+    parts.push('SEMO Weather Network');
   }
   if (state.calendarAt) {
     var cMin = Math.round((Date.now() - state.calendarAt) / 60000);

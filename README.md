@@ -6,13 +6,13 @@ Fire HD 8, 10th gen). A small Node service on the HomeLab pulls Google Calendar
 one static page. The tablet just runs a kiosk browser pointed at it.
 
 - No Google OAuth. Read-only iCal URLs only.
-- No API keys. NWS (`api.weather.gov`) is free and keyless.
+- No API keys. NWS (`api.weather.gov`) and the SEMO Weather Network current-conditions feed are both free and keyless.
 - Two runtime dependencies (`ical-expander` + `ical.js`). No build step.
 - Serves stale data rather than going blank when an upstream API hiccups.
 
 ```
 server.js            HTTP server: /api/weather, /api/calendar, /api/health, static files
-lib/weather.js       NWS points -> forecast / hourly / latest observation, normalised
+lib/weather.js       SEMO current conditions + NWS forecast / hourly (NWS obs fallback), normalised
 lib/calendar.js      fetch + parse each iCal URL, expand recurrences, merge, sort
 lib/cache.js         in-memory TTL cache with serve-stale-on-error
 lib/config.js        config.json + a few env overrides
@@ -31,6 +31,7 @@ Edit `config/config.json`:
 | -------------- | ------- |
 | `lat` / `lon`  | weather point. Default is Cape Girardeau, MO (`37.3059, -89.5181`). Put in your actual address for the most local grid + observation station. |
 | `nwsUserAgent` | any string that identifies you, e.g. your email. NWS may throttle anonymous clients. |
+| `semoCurrentUrl` | current-conditions source: the SEMO Weather Network Cape Girardeau County feed (a blend of local community stations). Used for the "now" temperature / feels-like / humidity / wind; NWS still supplies hourly + daily forecast, and is the automatic fallback if this is unreachable. Set to `""` to use NWS observations only. |
 | `timezone`     | IANA zone, e.g. `America/Chicago`. Drives "Today / Tomorrow" grouping. Also set `TZ` on the container (compose does this). |
 | `hourlyCount`  | hourly rows to fetch (display shows 7). |
 | `dailyCount`   | forecast days shown (today + 3). |
@@ -103,6 +104,7 @@ Under **Environment variables** on the same screen, add:
 | `HA_BASE_URL` | only if `http://homeassistant.local:8123` doesn't resolve from the container — set the HA host's LAN IP, e.g. `http://192.168.1.20:8123` |
 | `HA_CAMERAS_JSON` | only to change the camera list baked into `docker-compose.yml` — a one-line JSON array of `{id,name,entity}` |
 | `NWS_USER_AGENT` | your email |
+| `SEMO_CURRENT_URL` | only to override the built-in SEMO feed URL, or set it empty to fall back to NWS observations |
 | `TZ` | `America/Chicago` (optional; already the default) |
 | `LAT` / `LON` | only to move off the Cape Girardeau default |
 
@@ -143,8 +145,13 @@ Health check: `GET /api/health` returns `{ "ok": true, ... }`.
 
 - All-day events use iCal's exclusive `DTEND`, so a one-day holiday shows on the
   single correct date.
-- Weather source is NWS only for now. A hyper-local station feed
-  (capecountyweather.com or a specific PWS) can be added later as the
-  current-conditions source - see the project note in the Brain vault.
+- Current conditions come from the SEMO Weather Network feed
+  (`semoweathernetwork.com/api/cape-county-current.php`, recommended by
+  capecountyweather.com) - a live blend of community stations in Cape Girardeau
+  County. Hourly + daily forecast are still NWS. If SEMO is unreachable the
+  service silently falls back to the nearest NWS observation station. SEMO asks
+  for no more than one request per minute; the server cache (10 min) keeps us
+  well under. SEMO has no sky-condition data, so the weather icon and the
+  short description are still taken from the NWS hourly forecast.
 - Weather icons are emoji so there are no external image requests and nothing to
   cache; the mapping is in `lib/weather.js` (`pickIcon`).

@@ -4,6 +4,7 @@
   "lat": 37.3059,
   "lon": -89.5181,
   "nwsUserAgent": "kindle-wall-display - you@example.com",
+  "semoCurrentUrl": "https://semoweathernetwork.com/api/cape-county-current.php",
   "hourlyCount": 12,
   "dailyCount": 4,
   "calendarDays": 3,
