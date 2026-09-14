@@ -11,8 +11,8 @@ COPY server.js ./
 COPY lib ./lib
 COPY public ./public
 
-# Config is bind-mounted at runtime (see docker-compose.yml)
-RUN mkdir -p /app/config
+# Config is bind-mounted at runtime; state.json is a named volume (see docker-compose.yml)
+RUN mkdir -p /app/config /app/state && chown -R node:node /app/state
 
 EXPOSE 8080
 USER node

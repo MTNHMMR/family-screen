@@ -37,3 +37,9 @@ services:
       HA_BASE_URL: "${HA_BASE_URL:-http://homeassistant.local:8123}"
       HA_TOKEN: "${HA_TOKEN:-}"
       HA_CAMERAS_JSON: '[{"id":"front","name":"Front Door","entity":"camera.front_door_live_view"},{"id":"driveway","name":"Driveway","entity":"camera.driveway_live_view"},{"id":"backyard","name":"Back Yard","entity":"camera.backyard_live_view"}]'
+      STATE_PATH: /app/state/state.json
+    volumes:
+      - wall-display-state:/app/state
+
+volumes:
+  wall-display-state:
