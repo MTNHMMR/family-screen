@@ -151,6 +151,7 @@ const server = http.createServer(async (req, res) => {
       } catch (err) {
         return sendJson(res, { error: err.message }, 400);
       }
+      if (!body || typeof body !== 'object' || Array.isArray(body)) body = {};
       if (!Array.isArray(body.hidden) || !body.hidden.every((n) => typeof n === 'string')) {
         return sendJson(res, { error: 'hidden must be an array of calendar names' }, 400);
       }
@@ -166,6 +167,7 @@ const server = http.createServer(async (req, res) => {
       } catch (err) {
         return sendJson(res, { error: err.message }, 400);
       }
+      if (!body || typeof body !== 'object' || Array.isArray(body)) body = {};
       const state = loadState();
       if (body.clear) {
         state.countdown = null;
