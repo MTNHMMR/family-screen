@@ -23,7 +23,7 @@ function flash(msg) {
   }, 2000);
 }
 
-var adminState = { hiddenCalendars: [], countdown: null, calendars: [] };
+var adminState = { hiddenCalendars: [], countdowns: [], calendars: [] };
 
 function renderCalendars() {
   var host = $('calendarList');
@@ -69,8 +69,9 @@ function toggleCalendar(name, shown) {
 }
 
 function isSelected(ev) {
-  var c = adminState.countdown;
-  return !!c && c.calendarName === ev.calendar && c.uid === ev.uid;
+  return adminState.countdowns.some(function (c) {
+    return c.calendarName === ev.calendar && c.uid === ev.uid;
+  });
 }
 
 function renderEvents(series) {
@@ -98,8 +99,13 @@ function renderEvents(series) {
     group.appendChild(h3);
 
     groups[calName].forEach(function (ev) {
-      var row = document.createElement('div');
+      var row = document.createElement('label');
       row.className = 'ev-row' + (isSelected(ev) ? ' selected' : '');
+
+      var cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.checked = isSelected(ev);
+      cb.addEventListener('change', function () { toggleCountdown(ev, cb.checked); });
 
       var title = document.createElement('span');
       title.className = 'ev-title';
@@ -111,9 +117,9 @@ function renderEvents(series) {
         month: 'short', day: 'numeric', year: 'numeric',
       });
 
+      row.appendChild(cb);
       row.appendChild(title);
       row.appendChild(date);
-      row.addEventListener('click', function () { selectCountdown(ev); });
       group.appendChild(row);
     });
 
@@ -121,18 +127,25 @@ function renderEvents(series) {
   });
 }
 
-function selectCountdown(ev) {
+function toggleCountdown(ev, selected) {
+  var items = adminState.countdowns.filter(function (c) {
+    return !(c.calendarName === ev.calendar && c.uid === ev.uid);
+  });
+  if (selected) {
+    items.push({ calendarName: ev.calendar, uid: ev.uid, title: ev.title });
+  }
   return fetchJSON('/api/admin/countdown', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ calendarName: ev.calendar, uid: ev.uid, title: ev.title }),
+    body: JSON.stringify({ items: items }),
   }).then(function (data) {
-    adminState.countdown = data.countdown;
-    flash('Countdown set');
+    adminState.countdowns = data.countdowns;
+    flash(selected ? 'Countdown added' : 'Countdown removed');
     loadEvents();
   }).catch(function (err) {
-    console.error('set countdown failed', err);
+    console.error('save countdown failed', err);
     flash('Save failed');
+    loadEvents(); // revert the checkbox to the last known-good state
   });
 }
 
@@ -142,11 +155,11 @@ function clearCountdown() {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ clear: true }),
   }).then(function (data) {
-    adminState.countdown = data.countdown;
-    flash('Countdown cleared');
+    adminState.countdowns = data.countdowns;
+    flash('All countdowns cleared');
     loadEvents();
   }).catch(function (err) {
-    console.error('clear countdown failed', err);
+    console.error('clear countdowns failed', err);
     flash('Save failed');
   });
 }
@@ -164,7 +177,7 @@ function start() {
   fetchJSON('/api/admin/state')
     .then(function (data) {
       adminState.hiddenCalendars = data.hiddenCalendars || [];
-      adminState.countdown = data.countdown || null;
+      adminState.countdowns = data.countdowns || [];
       adminState.calendars = data.calendars || [];
       renderCalendars();
       return loadEvents();
