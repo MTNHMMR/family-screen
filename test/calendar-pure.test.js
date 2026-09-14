@@ -23,6 +23,25 @@ test('filterHidden removes events and legend entries for hidden calendar names',
   assert.deepEqual(result.events.map((e) => e.uid), ['1']);
 });
 
+test('filterHidden does not mutate its input data object', () => {
+  const data = {
+    updated: '2026-09-13T00:00:00.000Z',
+    days: 3,
+    calendars: [
+      { name: 'Family', color: '#111' },
+      { name: 'Scouts', color: '#222' },
+    ],
+    events: [
+      { uid: '1', title: 'Dinner', calendar: 'Family', start: '2026-09-14T00:00:00.000Z' },
+      { uid: '2', title: 'Meeting', calendar: 'Scouts', start: '2026-09-14T01:00:00.000Z' },
+    ],
+    errors: [],
+  };
+  const originalClone = JSON.parse(JSON.stringify(data));
+  filterHidden(data, ['Scouts']);
+  assert.deepEqual(data, originalClone);
+});
+
 test('filterHidden returns an equivalent object when nothing is hidden', () => {
   const data = { calendars: [{ name: 'Family' }], events: [{ uid: '1', calendar: 'Family' }] };
   assert.deepEqual(filterHidden(data, []), data);
