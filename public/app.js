@@ -338,7 +338,9 @@ function renderCountdown() {
   stopCountdownRotation();
   state.countdownIdx = 0;
   renderCountdownItem(items[0]);
-  state.countdownTimer = setInterval(advanceCountdown, COUNTDOWN_ROTATE_MS);
+  if (items.length > 1) {
+    state.countdownTimer = setInterval(advanceCountdown, COUNTDOWN_ROTATE_MS);
+  }
 }
 
 function loadCountdown() {
