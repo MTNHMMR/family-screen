@@ -5,6 +5,8 @@ var CAL_MS = 5 * 60 * 1000;
 var FETCH_TIMEOUT_MS = 20000;
 var RELOAD_HOUR = 3; // full page reload window, local time
 var RELOAD_MIN = 30;
+var COUNTDOWN_ROTATE_MS = 10000;
+var COUNTDOWN_FADE_MS = 300;
 
 var state = {
   weather: null,
@@ -14,6 +16,8 @@ var state = {
   calendarAt: 0,
   calendarFail: 0,
   countdown: null,
+  countdownIdx: 0,
+  countdownTimer: null,
   bootAt: Date.now(),
 };
 
@@ -278,30 +282,24 @@ function escapeHtml(s) {
 
 /* ------------------------------------------------------------------ countdown */
 
-function renderCountdown() {
-  var c = state.countdown;
-  var hourlyCard = $('hourlyCard');
-  var countdownCard = $('countdownCard');
-  if (!c || !c.active) {
-    hourlyCard.hidden = false;
-    countdownCard.hidden = true;
-    return;
-  }
-  hourlyCard.hidden = true;
-  countdownCard.hidden = false;
+function stopCountdownRotation() {
+  clearInterval(state.countdownTimer);
+  state.countdownTimer = null;
+}
 
-  var big = c.daysLeft > 0 ? c.daysLeft : c.hoursLeft;
+function renderCountdownItem(item) {
+  var big = item.daysLeft > 0 ? item.daysLeft : item.hoursLeft;
   var unit;
-  if (c.daysLeft > 0) {
-    unit = c.daysLeft === 1 ? 'day' : 'days';
+  if (item.daysLeft > 0) {
+    unit = item.daysLeft === 1 ? 'day' : 'days';
   } else {
-    unit = c.hoursLeft === 1 ? 'hour' : 'hours';
+    unit = item.hoursLeft === 1 ? 'hour' : 'hours';
   }
-  var targetDate = parseEventStart(c.start);
+  var targetDate = parseEventStart(item.start);
 
   var titleEl = $('countdownTitle');
-  titleEl.textContent = c.title || 'Countdown';
-  titleEl.style.color = c.color || '';
+  titleEl.textContent = item.title || 'Countdown';
+  titleEl.style.color = item.color || '';
 
   $('countdown').innerHTML =
     '<div class="cd-num">' + big + '</div>' +
@@ -309,6 +307,40 @@ function renderCountdown() {
     '<div class="cd-date">' +
     targetDate.toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' }) +
     '</div>';
+}
+
+function advanceCountdown() {
+  var items = (state.countdown && state.countdown.items) || [];
+  if (items.length === 0) return;
+  var el = $('countdown');
+  el.classList.add('fade-out');
+  setTimeout(function () {
+    state.countdownIdx = (state.countdownIdx + 1) % items.length;
+    renderCountdownItem(items[state.countdownIdx]);
+    el.classList.remove('fade-out');
+  }, COUNTDOWN_FADE_MS);
+}
+
+function renderCountdown() {
+  var c = state.countdown;
+  var hourlyCard = $('hourlyCard');
+  var countdownCard = $('countdownCard');
+  var items = (c && c.items) || [];
+  if (!c || !c.active || items.length === 0) {
+    hourlyCard.hidden = false;
+    countdownCard.hidden = true;
+    stopCountdownRotation();
+    return;
+  }
+  hourlyCard.hidden = true;
+  countdownCard.hidden = false;
+
+  stopCountdownRotation();
+  state.countdownIdx = 0;
+  renderCountdownItem(items[0]);
+  if (items.length > 1) {
+    state.countdownTimer = setInterval(advanceCountdown, COUNTDOWN_ROTATE_MS);
+  }
 }
 
 function loadCountdown() {

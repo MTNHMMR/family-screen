@@ -24,19 +24,25 @@ const state = require('../lib/state');
 
 test('loadState returns defaults when the file does not exist', () => {
   withTempStatePath(() => {
-    assert.deepEqual(state.loadState(), { hiddenCalendars: [], countdown: null });
+    assert.deepEqual(state.loadState(), { hiddenCalendars: [], countdowns: [] });
   });
 });
 
-test('saveState then loadState round-trips hiddenCalendars and countdown', () => {
+test('saveState then loadState round-trips hiddenCalendars and countdowns', () => {
   withTempStatePath(() => {
     state.saveState({
       hiddenCalendars: ['Scouts'],
-      countdown: { calendarName: 'Family', uid: 'abc123', title: 'Trivia Night' },
+      countdowns: [
+        { calendarName: 'Family', uid: 'abc123', title: 'Trivia Night' },
+        { calendarName: 'Elizabeth', uid: 'def456', title: 'Softball Round Robin' },
+      ],
     });
     assert.deepEqual(state.loadState(), {
       hiddenCalendars: ['Scouts'],
-      countdown: { calendarName: 'Family', uid: 'abc123', title: 'Trivia Night' },
+      countdowns: [
+        { calendarName: 'Family', uid: 'abc123', title: 'Trivia Night' },
+        { calendarName: 'Elizabeth', uid: 'def456', title: 'Softball Round Robin' },
+      ],
     });
   });
 });
@@ -45,14 +51,49 @@ test('loadState returns defaults when the file has invalid JSON', () => {
   withTempStatePath((file) => {
     fs.mkdirSync(path.dirname(file), { recursive: true });
     fs.writeFileSync(file, '{not valid json');
-    assert.deepEqual(state.loadState(), { hiddenCalendars: [], countdown: null });
+    assert.deepEqual(state.loadState(), { hiddenCalendars: [], countdowns: [] });
   });
 });
 
 test('loadState normalizes a malformed hiddenCalendars field to an empty array', () => {
   withTempStatePath((file) => {
     fs.mkdirSync(path.dirname(file), { recursive: true });
-    fs.writeFileSync(file, JSON.stringify({ hiddenCalendars: 'not-an-array', countdown: null }));
+    fs.writeFileSync(file, JSON.stringify({ hiddenCalendars: 'not-an-array', countdowns: [] }));
     assert.deepEqual(state.loadState().hiddenCalendars, []);
+  });
+});
+
+test('loadState migrates a legacy singular countdown object into a one-item countdowns array', () => {
+  withTempStatePath((file) => {
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, JSON.stringify({
+      hiddenCalendars: [],
+      countdown: { calendarName: 'Family', uid: 'abc123', title: 'Trivia Night' },
+    }));
+    assert.deepEqual(state.loadState().countdowns, [
+      { calendarName: 'Family', uid: 'abc123', title: 'Trivia Night' },
+    ]);
+  });
+});
+
+test('loadState migrates a legacy null countdown into an empty countdowns array', () => {
+  withTempStatePath((file) => {
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, JSON.stringify({ hiddenCalendars: [], countdown: null }));
+    assert.deepEqual(state.loadState().countdowns, []);
+  });
+});
+
+test('loadState prefers a present countdowns array over a legacy countdown field', () => {
+  withTempStatePath((file) => {
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, JSON.stringify({
+      hiddenCalendars: [],
+      countdown: { calendarName: 'Old', uid: 'old-uid', title: 'Old Selection' },
+      countdowns: [{ calendarName: 'New', uid: 'new-uid', title: 'New Selection' }],
+    }));
+    assert.deepEqual(state.loadState().countdowns, [
+      { calendarName: 'New', uid: 'new-uid', title: 'New Selection' },
+    ]);
   });
 });
