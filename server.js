@@ -6,8 +6,15 @@ const path = require('path');
 
 const { loadConfig } = require('./lib/config');
 const { getWeather } = require('./lib/weather');
-const { getCalendar } = require('./lib/calendar');
+const {
+  getCalendar,
+  filterHidden,
+  findNextOccurrence,
+  listUpcomingSeries,
+  computeCountdown,
+} = require('./lib/calendar');
 const camera = require('./lib/camera');
+const { loadState, saveState } = require('./lib/state');
 
 const config = loadConfig();
 const PUBLIC_DIR = path.join(__dirname, 'public');
@@ -31,6 +38,32 @@ function sendJson(res, body, status = 200) {
     'Content-Length': Buffer.byteLength(text),
   });
   res.end(text);
+}
+
+function readJsonBody(req, maxBytes = 1e6) {
+  return new Promise((resolve, reject) => {
+    let size = 0;
+    const chunks = [];
+    req.on('data', (chunk) => {
+      size += chunk.length;
+      if (size > maxBytes) {
+        reject(new Error('body too large'));
+        req.destroy();
+        return;
+      }
+      chunks.push(chunk);
+    });
+    req.on('end', () => {
+      const text = Buffer.concat(chunks).toString('utf8');
+      if (!text) return resolve({});
+      try {
+        resolve(JSON.parse(text));
+      } catch (err) {
+        reject(new Error('invalid json'));
+      }
+    });
+    req.on('error', reject);
+  });
 }
 
 function serveStatic(pathname, res) {
@@ -78,7 +111,78 @@ const server = http.createServer(async (req, res) => {
       return sendJson(res, await getWeather(config));
     }
     if (url.pathname === '/api/calendar') {
-      return sendJson(res, await getCalendar(config));
+      const data = await getCalendar(config);
+      const state = loadState();
+      return sendJson(res, filterHidden(data, state.hiddenCalendars));
+    }
+    if (url.pathname === '/api/countdown') {
+      const state = loadState();
+      if (!state.countdown) return sendJson(res, { active: false });
+      const occ = await findNextOccurrence(config, state.countdown.calendarName, state.countdown.uid);
+      if (!occ) return sendJson(res, { active: false });
+      const { daysLeft, hoursLeft } = computeCountdown(occ.start, Date.now());
+      return sendJson(res, {
+        active: true,
+        title: occ.title || state.countdown.title,
+        start: occ.start,
+        calendarName: state.countdown.calendarName,
+        color: occ.color,
+        daysLeft,
+        hoursLeft,
+      });
+    }
+    if (url.pathname === '/api/admin/state') {
+      const state = loadState();
+      return sendJson(res, {
+        hiddenCalendars: state.hiddenCalendars,
+        countdown: state.countdown,
+        calendars: config.calendars.map((c) => ({ name: c.name, color: c.color })),
+      });
+    }
+    if (url.pathname === '/api/admin/events') {
+      const requested = Number(url.searchParams.get('days')) || 365;
+      const days = Math.min(Math.max(requested, 1), 400);
+      return sendJson(res, { series: await listUpcomingSeries(config, days) });
+    }
+    if (url.pathname === '/api/admin/calendars' && req.method === 'POST') {
+      let body;
+      try {
+        body = await readJsonBody(req);
+      } catch (err) {
+        return sendJson(res, { error: err.message }, 400);
+      }
+      if (!body || typeof body !== 'object' || Array.isArray(body)) body = {};
+      if (!Array.isArray(body.hidden) || !body.hidden.every((n) => typeof n === 'string')) {
+        return sendJson(res, { error: 'hidden must be an array of calendar names' }, 400);
+      }
+      const state = loadState();
+      state.hiddenCalendars = body.hidden;
+      saveState(state);
+      return sendJson(res, { ok: true, hiddenCalendars: state.hiddenCalendars });
+    }
+    if (url.pathname === '/api/admin/countdown' && req.method === 'POST') {
+      let body;
+      try {
+        body = await readJsonBody(req);
+      } catch (err) {
+        return sendJson(res, { error: err.message }, 400);
+      }
+      if (!body || typeof body !== 'object' || Array.isArray(body)) body = {};
+      const state = loadState();
+      if (body.clear) {
+        state.countdown = null;
+      } else {
+        if (!body.calendarName || !body.uid) {
+          return sendJson(res, { error: 'calendarName and uid are required' }, 400);
+        }
+        state.countdown = {
+          calendarName: String(body.calendarName),
+          uid: String(body.uid),
+          title: body.title ? String(body.title) : '',
+        };
+      }
+      saveState(state);
+      return sendJson(res, { ok: true, countdown: state.countdown });
     }
     if (url.pathname === '/api/cameras') {
       return sendJson(res, { cameras: camera.listCameras(config) });
@@ -94,7 +198,8 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname.startsWith('/api/')) {
       return sendJson(res, { error: 'unknown endpoint' }, 404);
     }
-    return serveStatic(url.pathname, res);
+    const staticPath = url.pathname === '/admin' ? '/admin.html' : url.pathname;
+    return serveStatic(staticPath, res);
   } catch (err) {
     console.error(`error handling ${url.pathname}:`, err);
     return sendJson(res, { error: String((err && err.message) || err) }, 502);

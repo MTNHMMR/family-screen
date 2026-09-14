@@ -176,6 +176,24 @@ html, body {
 .fc .f-hi { font-weight: 600; text-align: right; }
 .fc .f-lo { color: var(--dim); text-align: right; }
 
+.countdown {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 10px 0 4px;
+}
+.cd-num { font-size: 64px; font-weight: 300; line-height: 1; }
+.cd-unit {
+  font-size: 20px;
+  color: var(--dim);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-top: 2px;
+}
+.cd-date { font-size: 18px; color: var(--dim); margin-top: 10px; }
+
 /* ---------- status bar ---------- */
 #statusbar {
   display: flex;

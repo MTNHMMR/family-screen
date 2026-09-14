@@ -1,6 +1,8 @@
 node_modules/
 config/config.json
 config.json
+config/state.json
+state.json
 *.local
 .DS_Store
 npm-debug.log*

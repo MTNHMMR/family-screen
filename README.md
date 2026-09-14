@@ -149,6 +149,25 @@ Health check: `GET /api/health` returns `{ "ok": true, ... }`.
    always-on LCD and on the room at night.
 4. Give it permanent USB power at the mount point.
 
+## 5. Event countdown + admin page
+
+Optional: replace the "Hourly" forecast card with a countdown to a picked
+calendar event.
+
+- Visit `http://<homelab-ip>:8080/admin` from any computer on the LAN — no
+  auth, and nothing on the wall display links to it — to:
+  - toggle which configured calendars show on the display
+  - pick which upcoming calendar event to count down to (a recurring event
+    keeps tracking its next occurrence automatically; no need to reselect
+    it after it passes)
+- The display falls back to the Hourly forecast whenever nothing is
+  selected, or the selected event has already passed.
+- Admin choices are stored in `state.json`, separate from `config.json`.
+  For a local run it lands next to `config.json` (or in `./state.json`);
+  for the Portainer deploy it needs the `wall-display-state` volume
+  (already declared in `docker-compose.yml`) so choices survive a
+  redeploy.
+
 ## Notes
 
 - All-day events use iCal's exclusive `DTEND`, so a one-day holiday shows on the
