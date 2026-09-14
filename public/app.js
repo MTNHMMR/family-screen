@@ -13,6 +13,7 @@ var state = {
   calendar: null,
   calendarAt: 0,
   calendarFail: 0,
+  countdown: null,
   bootAt: Date.now(),
 };
 
@@ -267,6 +268,52 @@ function escapeHtml(s) {
   return String(s).replace(/[&<>"]/g, function (ch) {
     return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch];
   });
+}
+
+/* ------------------------------------------------------------------ countdown */
+
+function renderCountdown() {
+  var c = state.countdown;
+  var hourlyCard = $('hourlyCard');
+  var countdownCard = $('countdownCard');
+  if (!c || !c.active) {
+    hourlyCard.hidden = false;
+    countdownCard.hidden = true;
+    return;
+  }
+  hourlyCard.hidden = true;
+  countdownCard.hidden = false;
+
+  var big = c.daysLeft > 0 ? c.daysLeft : c.hoursLeft;
+  var unit;
+  if (c.daysLeft > 0) {
+    unit = c.daysLeft === 1 ? 'day' : 'days';
+  } else {
+    unit = c.hoursLeft === 1 ? 'hour' : 'hours';
+  }
+  var targetDate = new Date(c.start);
+
+  var titleEl = $('countdownTitle');
+  titleEl.textContent = c.title || 'Countdown';
+  titleEl.style.color = c.color || '';
+
+  $('countdown').innerHTML =
+    '<div class="cd-num">' + big + '</div>' +
+    '<div class="cd-unit">' + unit + '</div>' +
+    '<div class="cd-date">' +
+    targetDate.toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' }) +
+    '</div>';
+}
+
+function loadCountdown() {
+  return fetchJSON('/api/countdown')
+    .then(function (data) {
+      state.countdown = data;
+      renderCountdown();
+    })
+    .catch(function (err) {
+      console.warn('countdown fetch failed', err);
+    });
 }
 
 /* ------------------------------------------------------------------ cameras */
@@ -589,13 +636,15 @@ function start() {
 
   loadWeather();
   loadCalendar();
+  loadCountdown();
   setInterval(loadWeather, WEATHER_MS);
   setInterval(loadCalendar, CAL_MS);
+  setInterval(loadCountdown, CAL_MS);
   setInterval(renderStatus, 30000);
   setInterval(renderCalendar, 60000); // keep "Today/Tomorrow" honest across midnight
 
   document.addEventListener('visibilitychange', function () {
-    if (!document.hidden) { loadWeather(); loadCalendar(); }
+    if (!document.hidden) { loadWeather(); loadCalendar(); loadCountdown(); }
   });
 }
 
