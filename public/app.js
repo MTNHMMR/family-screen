@@ -21,6 +21,12 @@ var state = {
 
 function $(id) { return document.getElementById(id); }
 
+function parseEventStart(startStr) {
+  var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(startStr);
+  if (m) return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  return new Date(startStr);
+}
+
 function fetchJSON(url) {
   var ctrl = new AbortController();
   var t = setTimeout(function () { ctrl.abort(); }, FETCH_TIMEOUT_MS);
@@ -291,7 +297,7 @@ function renderCountdown() {
   } else {
     unit = c.hoursLeft === 1 ? 'hour' : 'hours';
   }
-  var targetDate = new Date(c.start);
+  var targetDate = parseEventStart(c.start);
 
   var titleEl = $('countdownTitle');
   titleEl.textContent = c.title || 'Countdown';
@@ -313,6 +319,8 @@ function loadCountdown() {
     })
     .catch(function (err) {
       console.warn('countdown fetch failed', err);
+      state.countdown = { active: false };
+      renderCountdown();
     });
 }
 

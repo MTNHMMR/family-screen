@@ -123,7 +123,7 @@ const server = http.createServer(async (req, res) => {
       const { daysLeft, hoursLeft } = computeCountdown(occ.start, Date.now());
       return sendJson(res, {
         active: true,
-        title: state.countdown.title || occ.title,
+        title: occ.title || state.countdown.title,
         start: occ.start,
         calendarName: state.countdown.calendarName,
         color: occ.color,

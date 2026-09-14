@@ -2,6 +2,12 @@
 
 function $(id) { return document.getElementById(id); }
 
+function parseEventStart(startStr) {
+  var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(startStr);
+  if (m) return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  return new Date(startStr);
+}
+
 function fetchJSON(url, opts) {
   return fetch(url, opts).then(function (r) {
     if (!r.ok) throw new Error('HTTP ' + r.status);
@@ -101,7 +107,7 @@ function renderEvents(series) {
 
       var date = document.createElement('span');
       date.className = 'ev-date';
-      date.textContent = new Date(ev.start).toLocaleDateString([], {
+      date.textContent = parseEventStart(ev.start).toLocaleDateString([], {
         month: 'short', day: 'numeric', year: 'numeric',
       });
 

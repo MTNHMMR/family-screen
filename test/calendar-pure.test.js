@@ -64,6 +64,17 @@ test('pickNextOccurrence returns null when there is no future match', () => {
   assert.equal(pickNextOccurrence(events, 'Scouts', 'trivia', now), null);
 });
 
+test('pickNextOccurrence treats a bare YYYY-MM-DD start as local midnight, not UTC midnight', () => {
+  // An all-day event on 2026-11-14 parsed as UTC would be 2026-11-13 18:00 in America/Chicago (UTC-6).
+  // At a "now" of 2026-11-13T19:00:00-06:00 (i.e. after that wrong UTC-interpreted instant but
+  // before the correct local midnight), the event must still count as upcoming.
+  const wrongInterpretation = new Date('2026-11-14T00:00:00.000Z').getTime(); // what UTC parsing would give
+  const now = wrongInterpretation + 60 * 60 * 1000; // one hour after the wrong (too-early) instant
+  const events = [{ uid: 'campout', calendar: 'Scouts', start: '2026-11-14', title: 'Fall Campout' }];
+  const result = pickNextOccurrence(events, 'Scouts', 'campout', now);
+  assert.equal(result, events[0]);
+});
+
 test('dedupeToSeries keeps one earliest row per calendar+uid pair, sorted by start', () => {
   const events = [
     { uid: 'weekly', calendar: 'Scouts', start: '2026-09-22T00:00:00.000Z', title: 'Troop Meeting' },
@@ -86,4 +97,13 @@ test('computeCountdown clamps a past start to zero', () => {
   const now = new Date('2026-09-13T00:00:00.000Z').getTime();
   const start = new Date('2026-09-01T00:00:00.000Z').toISOString();
   assert.deepEqual(computeCountdown(start, now), { daysLeft: 0, hoursLeft: 0 });
+});
+
+test('computeCountdown treats a bare YYYY-MM-DD start as local midnight, not UTC midnight', () => {
+  const wrongInterpretation = new Date('2026-11-14T00:00:00.000Z').getTime();
+  const now = wrongInterpretation + 60 * 60 * 1000;
+  const result = computeCountdown('2026-11-14', now);
+  // Local midnight is later than the UTC-midnight instant, so there must still be time left,
+  // not { daysLeft: 0, hoursLeft: 0 } (which is what the UTC-parsing bug would produce here).
+  assert.ok(result.daysLeft > 0 || result.hoursLeft > 0);
 });
