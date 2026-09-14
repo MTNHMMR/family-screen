@@ -117,25 +117,32 @@ const server = http.createServer(async (req, res) => {
     }
     if (url.pathname === '/api/countdown') {
       const state = loadState();
-      if (!state.countdown) return sendJson(res, { active: false });
-      const occ = await findNextOccurrence(config, state.countdown.calendarName, state.countdown.uid);
-      if (!occ) return sendJson(res, { active: false });
-      const { daysLeft, hoursLeft } = computeCountdown(occ.start, Date.now());
-      return sendJson(res, {
-        active: true,
-        title: occ.title || state.countdown.title,
-        start: occ.start,
-        calendarName: state.countdown.calendarName,
-        color: occ.color,
-        daysLeft,
-        hoursLeft,
-      });
+      const resolved = await Promise.all(
+        state.countdowns.map((c) =>
+          findNextOccurrence(config, c.calendarName, c.uid).then((occ) => ({ c, occ }))
+        )
+      );
+      const items = resolved
+        .filter((r) => r.occ)
+        .map((r) => {
+          const { daysLeft, hoursLeft } = computeCountdown(r.occ.start, Date.now());
+          return {
+            title: r.occ.title || r.c.title,
+            start: r.occ.start,
+            calendarName: r.c.calendarName,
+            color: r.occ.color,
+            daysLeft,
+            hoursLeft,
+          };
+        })
+        .sort((a, b) => (a.start < b.start ? -1 : a.start > b.start ? 1 : 0));
+      return sendJson(res, { active: items.length > 0, items });
     }
     if (url.pathname === '/api/admin/state') {
       const state = loadState();
       return sendJson(res, {
         hiddenCalendars: state.hiddenCalendars,
-        countdown: state.countdown,
+        countdowns: state.countdowns,
         calendars: config.calendars.map((c) => ({ name: c.name, color: c.color })),
       });
     }
@@ -170,19 +177,21 @@ const server = http.createServer(async (req, res) => {
       if (!body || typeof body !== 'object' || Array.isArray(body)) body = {};
       const state = loadState();
       if (body.clear) {
-        state.countdown = null;
+        state.countdowns = [];
       } else {
-        if (!body.calendarName || !body.uid) {
-          return sendJson(res, { error: 'calendarName and uid are required' }, 400);
+        const valid = Array.isArray(body.items) &&
+          body.items.every((it) => it && typeof it === 'object' && it.calendarName && it.uid);
+        if (!valid) {
+          return sendJson(res, { error: 'items must be an array of {calendarName, uid, title}' }, 400);
         }
-        state.countdown = {
-          calendarName: String(body.calendarName),
-          uid: String(body.uid),
-          title: body.title ? String(body.title) : '',
-        };
+        state.countdowns = body.items.map((it) => ({
+          calendarName: String(it.calendarName),
+          uid: String(it.uid),
+          title: it.title ? String(it.title) : '',
+        }));
       }
       saveState(state);
-      return sendJson(res, { ok: true, countdown: state.countdown });
+      return sendJson(res, { ok: true, countdowns: state.countdowns });
     }
     if (url.pathname === '/api/cameras') {
       return sendJson(res, { cameras: camera.listCameras(config) });
