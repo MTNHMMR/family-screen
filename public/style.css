@@ -193,6 +193,8 @@ html, body {
   margin-top: 2px;
 }
 .cd-date { font-size: 18px; color: var(--dim); margin-top: 10px; }
+.countdown { transition: opacity 0.3s; }
+.countdown.fade-out { opacity: 0; }
 
 /* ---------- status bar ---------- */
 #statusbar {
