@@ -7,3 +7,4 @@ state.json
 .DS_Store
 npm-debug.log*
 server.log
+.env
