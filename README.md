@@ -17,7 +17,10 @@ lib/calendar.js      fetch + parse each iCal URL, expand recurrences, merge, sor
 lib/cache.js         in-memory TTL cache with serve-stale-on-error
 lib/config.js        config.json + a few env overrides
 lib/camera.js        Home Assistant camera proxy (HLS live stream + snapshot fallback)
-public/              index.html + style.css + app.js + hls.min.js (vendored)
+lib/webrtc.js        WebRTC live view: signalling routes (POST + SSE), session registry
+lib/webrtc-session.js  one HA camera/webrtc/offer websocket subscription
+lib/http-util.js     sendJson / readJsonBody
+public/              index.html + style.css + app.js + webrtc-client.js + hls.min.js (vendored)
 ```
 
 ## 1. Configure
@@ -54,25 +57,42 @@ deploy options below.
 ### Home Assistant camera (the Cam button)
 
 Optional. With `homeAssistant` configured, a **Cameras** button appears in the top
-bar between the clock and the weather. Tapping it opens a grid with every
-configured camera as its own live tile; tap a tile to blow it up full-screen, tap
-again for the grid. It closes on ✕, `Esc`, or after 90 s (so live feeds don't sit
-open burning the panel and your Ring quota). The Node service proxies everything,
-so the HA token never reaches the tablet.
+bar between the clock and the weather. Tapping it opens a grid showing each
+configured camera's **last event** (for Ring, the still from its most recent
+motion/ring). **Tap a tile to go live** full-screen for that one camera; tap again
+to return to the grid. A live view stops after 5 minutes. The overlay closes on ✕,
+`Esc`, or after 90 s idle, and the 90 s timer is paused while you're watching live.
+Only one camera is live at a time, which keeps Ring happy and is easy on the
+tablet. The Node service relays everything, so the HA token never reaches the
+tablet.
 
-Each tile plays the **live HLS stream** — the same one HA's own camera card uses.
-The server asks HA for it over the websocket (`camera/stream`) and then proxies
-the `.m3u8` playlists and `.ts` segments; the browser plays them with a vendored
-copy of `hls.js` (`public/hls.min.js`, no CDN). HLS runs ~6-10 s behind real time.
-A camera whose live stream won't start within ~25 s (Ring live view is slow and
-rate-limited) drops back to polling the still image — for Ring that's the last
-event's frame, labelled as such.
+How a tile goes live depends on what HA offers for that camera (`camera/capabilities`,
+reported per camera by `/api/cameras` as `live`):
+
+- **WebRTC** (Ring on current HA, where it's the only option). Near-real-time.
+  The browser (`public/webrtc-client.js`) runs the `RTCPeerConnection`; the
+  signalling goes through the server: the offer and ICE candidates are POSTed to
+  `/api/cam/:id/webrtc…`, and the answer, candidates, and errors come back on a
+  Server-Sent Events stream. The server relays both directions to HA's
+  `camera/webrtc/offer` websocket subscription. **Closing that SSE stream ends the
+  session** (HA then closes the Ring session), and the server also enforces its
+  own 5-minute cap and a 2-session limit. The video itself flows from Ring's
+  servers to the tablet, not through the Node service.
+- **HLS** (cameras that don't offer WebRTC). The server asks HA for the stream over
+  the websocket (`camera/stream`) and proxies the `.m3u8` playlists and `.ts`
+  segments; the browser plays them with a vendored copy of `hls.js`
+  (`public/hls.min.js`, no CDN). About 6–10 s behind real time.
+
+If live view doesn't start within ~25 s, or fails (Ring occasionally refuses a
+session; just tap again), the tile drops back to the last-event still, labelled
+"Live view unavailable".
 
 Config keys (`homeAssistant` block for a local run; the matching env vars for a
 Portainer deploy — see below):
 
 1. **`baseUrl`** / `HA_BASE_URL` — your HA address on the LAN, e.g.
-   `http://homeassistant.local:8123` or `http://192.168.1.x:8123`. Default is
+   `http://homeassistant.local:8123` or `http://192.168.1.x:8123` (an HA OS install
+   may serve on port 80 instead: `http://192.168.1.x`). Default is
    `homeassistant.local`; switch to the IP if that name doesn't resolve from the
    container.
 2. **`token`** / `HA_TOKEN` — in HA, click your user (bottom-left) → **Long-Lived

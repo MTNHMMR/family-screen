@@ -14,10 +14,18 @@ const {
   computeCountdown,
 } = require('./lib/calendar');
 const camera = require('./lib/camera');
+const webrtc = require('./lib/webrtc');
 const { loadState, saveState } = require('./lib/state');
+const { sendJson, readJsonBody } = require('./lib/http-util');
 
 const config = loadConfig();
 const PUBLIC_DIR = path.join(__dirname, 'public');
+
+const webrtcLookups = webrtc.createLookups();
+const handleWebrtc = webrtc.createWebrtcRoutes({
+  registry: webrtc.createRegistry(),
+  lookups: webrtcLookups,
+});
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -29,42 +37,6 @@ const MIME = {
   '.ico': 'image/x-icon',
   '.webmanifest': 'application/manifest+json',
 };
-
-function sendJson(res, body, status = 200) {
-  const text = JSON.stringify(body);
-  res.writeHead(status, {
-    'Content-Type': 'application/json; charset=utf-8',
-    'Cache-Control': 'no-store',
-    'Content-Length': Buffer.byteLength(text),
-  });
-  res.end(text);
-}
-
-function readJsonBody(req, maxBytes = 1e6) {
-  return new Promise((resolve, reject) => {
-    let size = 0;
-    const chunks = [];
-    req.on('data', (chunk) => {
-      size += chunk.length;
-      if (size > maxBytes) {
-        reject(new Error('body too large'));
-        req.destroy();
-        return;
-      }
-      chunks.push(chunk);
-    });
-    req.on('end', () => {
-      const text = Buffer.concat(chunks).toString('utf8');
-      if (!text) return resolve({});
-      try {
-        resolve(JSON.parse(text));
-      } catch (err) {
-        reject(new Error('invalid json'));
-      }
-    });
-    req.on('error', reject);
-  });
-}
 
 function serveStatic(pathname, res) {
   let rel = pathname === '/' ? '/index.html' : pathname;
@@ -194,8 +166,9 @@ const server = http.createServer(async (req, res) => {
       return sendJson(res, { ok: true, countdowns: state.countdowns });
     }
     if (url.pathname === '/api/cameras') {
-      return sendJson(res, { cameras: camera.listCameras(config) });
+      return sendJson(res, { cameras: await webrtc.listCamerasWithLive(config, webrtcLookups) });
     }
+    if (await handleWebrtc(req, res, url, config)) return;
     const hlsMatch = url.pathname.match(/^\/api\/cam\/([A-Za-z0-9_-]+)\/hls(?:\/([A-Za-z0-9_-]+))?$/);
     if (hlsMatch) {
       return camera.proxyHls(config, hlsMatch[1], hlsMatch[2] || '', res, req);
